@@ -1,0 +1,56 @@
+# Zig specific
+zig-cache/
+.zig-cache/
+zig-out/
+
+# Binaries/Executables
+bin/
+*.exe
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# Build artifacts
+temp_pkg/
+
+# Dependencies that should be downloaded by the package manager
+# We exclude zigimg from the repo to save space - it will be downloaded automatically
+deps/zigimg/
+
+# Specifically exclude any downloaded zigimg tar/zip files
+zigimg-master.tar.gz
+zigimg-*.tar.gz
+zigimg-*.zip
+
+# Sprites (might be large binary files)
+# Uncomment if you don't want to include sprites in the repo
+# sprites/**/*.png
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+*.swp
+*~
+.vscode/
+.idea/
+*.sublime-*
+
+# Temporary/backup files
+*.bak
+*.tmp
+*.log
+*.__pycache__
+*.pyc
+
+# Notes and local documentation
+NOTES.md
+
+# Deployment specific files
+.env
+.env.*
+config.local.json

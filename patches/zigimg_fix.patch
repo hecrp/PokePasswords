@@ -1,0 +1,7 @@
+diff --git a/src/formats/png/reader.zig b/src/formats/png/reader.zig
+index 981:43 100644
+--- a/src/formats/png/reader.zig
++++ b/src/formats/png/reader.zig
+@@ -981,7 +981,7 @@
+-pub const NoopAllocator = Allocator.VTable{ .alloc = undefined, .free = undefined, .resize = undefined };
++pub const NoopAllocator = Allocator.VTable{ .alloc = undefined, .free = undefined, .resize = undefined, .remap = undefined }; 

@@ -1,0 +1,96 @@
+#!/bin/bash
+# Script to render Pokémon sprites in the console
+# Usage: ./render_sprite.sh [sprite_path]
+
+SPRITE_PATH=${1:-"../sprites/pokemon/pikachu.png"}
+SPRITE_NAME=$(basename "${SPRITE_PATH}" .png)
+
+# Check that the file exists
+if [ ! -f "${SPRITE_PATH}" ]; then
+    echo "❌ Error: The file '${SPRITE_PATH}' does not exist."
+    echo "   Use './download_sprites.sh' to download sprites first."
+    exit 1
+fi
+
+# Detect operating system
+OS=$(uname -s)
+# Detect terminal
+TERM_PROGRAM=${TERM_PROGRAM:-""}
+
+# Function to render a sprite in the console
+render_sprite() {
+    local sprite_file=$1
+    local pokemon_name=$2
+    
+    echo "🎮 Rendering sprite: ${pokemon_name} 🎮"
+    echo
+
+    # Check if we're on macOS with Ghostty or another modern terminal
+    if [[ "$OS" == "Darwin" ]]; then
+        if command -v chafa > /dev/null; then
+            # Optimal settings for macOS with Ghostty/modern terminals
+            echo "🖼️ Rendering in high quality with chafa..."
+            
+            # Try to detect if terminal supports sixel
+            if [[ "$TERM" == *"kitty"* ]] || [[ "$TERM_PROGRAM" == *"iTerm"* ]] || [[ "$TERM" == *"ghostty"* ]]; then
+                # High quality sixel mode if supported
+                chafa --size=80x80 --colors=256 --symbols=block+border+space+extra --color-space=rgb --dither=floyd-steinberg --dither-grain=1x1 "${sprite_file}" 
+            else
+                # Good quality fallback for other terminals
+                chafa --size=80x80 --colors=256 --symbols=block+border+space "${sprite_file}"
+            fi
+        elif command -v viu > /dev/null; then
+            # viu is great for macOS
+            echo "🖼️ Rendering with viu..."
+            viu -w 80 -h 80 "${sprite_file}"
+        elif command -v termpix > /dev/null; then
+            # termpix is macOS specific
+            echo "🖼️ Rendering with termpix..."
+            termpix --width 80 "${sprite_file}"
+        # Check for other renderers as fallback
+        elif command -v img2txt > /dev/null; then
+            img2txt -f utf8 -W 60 "${sprite_file}"
+        elif command -v jp2a > /dev/null; then
+            jp2a --width=60 --colors "${sprite_file}"
+        elif command -v catimg > /dev/null; then
+            catimg -w 60 "${sprite_file}"
+        elif command -v tiv > /dev/null; then
+            # tiv as last resort on macOS
+            tiv -w 60 -h 60 "${sprite_file}"
+        else
+            echo "🖼️  [For better visualization on macOS, install chafa or viu]"
+            echo "   brew install chafa   # Best option for Ghostty"
+            echo "   brew install viu     # Good alternative"
+            echo "   brew install termpix # macOS specific"
+        fi
+    else
+        # For non-macOS systems
+        if command -v chafa > /dev/null; then
+            chafa -s 60x60 "${sprite_file}"
+        elif command -v img2txt > /dev/null; then
+            img2txt -f utf8 -W 60 "${sprite_file}"
+        elif command -v jp2a > /dev/null; then
+            jp2a --width=60 --colors "${sprite_file}"
+        elif command -v catimg > /dev/null; then
+            catimg -w 60 "${sprite_file}"
+        elif command -v tiv > /dev/null; then
+            tiv -w 60 -h 60 "${sprite_file}"
+        else
+            echo "🖼️  [Image not renderable - you need to install a visualization tool]"
+            echo "   You can install any of these utilities:"
+            echo "   - chafa: Best option for modern terminals"
+            echo "   - img2txt: sudo apt-get install caca-utils"
+            echo "   - jp2a: sudo apt-get install jp2a"
+            echo "   - catimg: sudo apt-get install catimg"
+            exit 1
+        fi
+    fi
+    
+    echo
+    echo "✨ Ready to create a password based on this sprite! ✨"
+    echo "   Run: zig build run -- --sprite ${sprite_file} --length 16 --preview"
+    echo
+}
+
+# Render the sprite
+render_sprite "${SPRITE_PATH}" "${SPRITE_NAME}" 
