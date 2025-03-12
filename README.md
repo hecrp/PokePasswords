@@ -17,7 +17,7 @@ Pokepasswords generates secure passwords by:
 3. Applying cryptographic functions to generate random but reproducible passwords
 4. Ensuring passwords meet security requirements (length, character types)
 
-NOTE: Each sprite always produces the same password, making this a deterministic generator. I'm currently working on techniques to change this specific behaviour.
+Each sprite always produces the same password, making this a deterministic generator.
 
 ## Quick Start
 
@@ -52,10 +52,38 @@ zig build run -- --sprite sprites/pokemon/pikachu.png --length 16
 Options:
   --sprite <file>        Select a specific sprite
   --dir <directory>      Load sprites from a directory
-  --length <n>           Set password length (default: 12)
-  --chars <categories>   Character types (upper,lower,numbers,symbols)
+  --length <n>           Set password length (default: 16)
+  --min-length <n>       Minimum password length (default: 8)
+  --max-length <n>       Maximum password length (default: 32)
+  --complexity <level>   Password complexity level
+                         [minimal, basic, medium, high, normal, custom]
+  --chars <categories>   Character types (u=upper, l=lower, n=numbers, s=symbols)
   --preview              Show preview of the generated password
   --help                 Show this help message
+```
+
+### Password Complexity Levels
+
+Pokepasswords supports different complexity levels to suit your security needs:
+
+- **minimal**: Lowercase letters only
+- **basic**: Lowercase letters + numbers
+- **medium**: Lowercase + uppercase + numbers
+- **high**: All character sets (lowercase, uppercase, numbers, symbols)
+- **normal**: Default behavior (all character sets)
+- **custom**: Use character sets specified with `--chars`
+
+#### Examples:
+
+```bash
+# Generate a medium complexity password
+zig build run -- --sprite sprites/pokemon/pikachu.png --complexity medium
+
+# Generate a password with only lowercase and numbers
+zig build run -- --sprite sprites/pokemon/pikachu.png --chars ln
+
+# Set custom length range and complexity
+zig build run -- --sprite sprites/pokemon/pikachu.png --min-length 12 --max-length 16 --complexity high
 ```
 
 ### For Local Use
@@ -127,3 +155,13 @@ For sprite visualization, install one of these tools:
 This project is licensed under the MIT license.
 
 Pokémon sprites are property of Nintendo/Creatures Inc./GAME FREAK Inc. and are used for educational and non-commercial purposes only. 
+
+## Estructura del Repositorio
+
+Este repositorio mantiene una estructura limpia, excluyendo archivos y directorios no esenciales mediante `.gitignore`:
+
+- Los sprites Pokemon no están incluidos en el repositorio y deben descargarse usando `./tools/download_sprites.sh`
+- Las dependencias (como zigimg) no están incluidas y se instalan con `./setup.sh`
+- Los directorios de compilación (`zig-cache/`, `zig-out/`) son generados durante la compilación
+
+Para más detalles sobre archivos excluidos y cómo obtenerlos, consulta `EXCLUDED_FILES.md`. 

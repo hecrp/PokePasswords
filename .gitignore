@@ -14,19 +14,29 @@ bin/
 
 # Build artifacts
 temp_pkg/
+.zigimg_patch/
 
 # Dependencies that should be downloaded by the package manager
 # We exclude zigimg from the repo to save space - it will be downloaded automatically
-deps/zigimg/
+deps/
+!/deps/.gitkeep
 
 # Specifically exclude any downloaded zigimg tar/zip files
 zigimg-master.tar.gz
 zigimg-*.tar.gz
 zigimg-*.zip
+*.tar.gz
+*.zip
 
 # Sprites (might be large binary files)
-# Uncomment if you don't want to include sprites in the repo
-# sprites/**/*.png
+# By default, we exclude sprite files since they can be downloaded
+sprites/**/*.png
+sprites/**/*.jpg
+sprites/**/*.jpeg
+sprites/**/*.gif
+sprites/**/*.bmp
+# Keep the directory structure
+!sprites/**/.gitkeep
 
 # System files
 .DS_Store
@@ -39,6 +49,7 @@ desktop.ini
 .vscode/
 .idea/
 *.sublime-*
+.editorconfig
 
 # Temporary/backup files
 *.bak
@@ -46,11 +57,34 @@ desktop.ini
 *.log
 *.__pycache__
 *.pyc
+*.out
 
 # Notes and local documentation
 NOTES.md
+EXCLUDED_FILES.md
+docs/
 
 # Deployment specific files
 .env
 .env.*
 config.local.json
+
+# Test files and scripts that are not part of the core project
+test_script.sh
+test/*
+!test/.gitkeep
+
+# Cache directories
+.cache/
+.npm/
+node_modules/
+
+# Generated files during execution
+*.generated.*
+
+# Downloaded files
+zigimg-master.tar.gz
+zigimg-*.tar.gz
+zigimg-*.zip
+# Make sure these additional files are ignorados
+test_script.sh
