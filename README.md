@@ -1,5 +1,7 @@
 # Pokepasswords
 
+![Pokepasswords](https://archives.bulbagarden.net/media/upload/thumb/6/61/Red_on_computer.png/441px-Red_on_computer.png?20160406004422)
+
 ## Introduction
 
 Pokepasswords was born from the desire to learn the Zig programming language through a meaningful low-level project. This password generator pays homage to one of the most impressive technical achievements in early game development - Game Freak's feat of fitting 151 Pokémon sprites into the limited 1MB cartridge of the original Game Boy.
@@ -8,6 +10,9 @@ In 1996, when the first Pokémon games were released, developers had to work wit
 
 Inspired by this technical achievement, Pokepasswords uses Pokémon sprites as sources of entropy for generating secure passwords. The project analyzes these sprites at the bit level (much like Game Freak's programmers had to do), converting them into binary matrices and using cryptographic techniques to derive secure passwords. 
 
+### Development Note
+
+This is a project under development that I'm using while learning the Zig programming language. I'm currently facing some issues with dependencies that have added complexity to the project. For this reason, I've included several auxiliary scripts, and the repository isn't as organized as I would like. I appreciate your understanding as I continue to improve both my ideas and Zig skills.
 
 ## How It Works
 
@@ -155,13 +160,3 @@ For sprite visualization, install one of these tools:
 This project is licensed under the MIT license.
 
 Pokémon sprites are property of Nintendo/Creatures Inc./GAME FREAK Inc. and are used for educational and non-commercial purposes only. 
-
-## Estructura del Repositorio
-
-Este repositorio mantiene una estructura limpia, excluyendo archivos y directorios no esenciales mediante `.gitignore`:
-
-- Los sprites Pokemon no están incluidos en el repositorio y deben descargarse usando `./tools/download_sprites.sh`
-- Las dependencias (como zigimg) no están incluidas y se instalan con `./setup.sh`
-- Los directorios de compilación (`zig-cache/`, `zig-out/`) son generados durante la compilación
-
-Para más detalles sobre archivos excluidos y cómo obtenerlos, consulta `EXCLUDED_FILES.md`. 
