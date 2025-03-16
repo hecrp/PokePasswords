@@ -17,12 +17,13 @@ const CliOptions = struct {
     sprite_path: ?[]const u8 = null,
     dir_path: ?[]const u8 = null,
     password_length: usize = 16,
-    min_length: usize = 8,     // New: minimum password length
-    max_length: usize = 32,    // New: maximum password length
+    min_length: usize = 8, // New: minimum password length
+    max_length: usize = 32, // New: maximum password length
     show_preview: bool = false,
     show_help: bool = false,
+    randomize: bool = false, // New: option to randomize seed
     character_sets: []const u8 = "ulns", // Default: use all character sets
-    complexity: []const u8 = "normal",   // New: predefined complexity level
+    complexity: []const u8 = "normal", // New: predefined complexity level
 };
 
 // Constants for ANSI colors
@@ -46,16 +47,16 @@ const ANSI_RESET = "\x1b[0m";
 pub fn main() !void {
     // Start timing the execution
     const start_time = std.time.milliTimestamp();
-    
+
     // Get allocator
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
-    
+
     // Parse command line arguments
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
-    
+
     // Parse CLI options
     const options = parseCliOptions(args) catch |err| {
         if (err == error.InvalidArgument or err == error.MissingValue) {
@@ -64,33 +65,33 @@ pub fn main() !void {
         }
         return err;
     };
-    
+
     // Show help if requested
     if (options.show_help) {
         try printUsage();
         return;
     }
-    
+
     // Show welcome banner
     try printWelcomeBanner();
-    
+
     // Process sprites and generate password
     const entropy_data = try processSprites(options, allocator);
     defer allocator.free(entropy_data);
-    
+
     // Create password policy based on options
     const policy = try createPasswordPolicy(options);
-    
+
     // Generate password
-    const pwd = try password.generatePassword(entropy_data, policy, allocator);
+    const pwd = try password.generatePassword(entropy_data, policy, allocator, options.randomize);
     defer allocator.free(pwd);
-    
+
     // Calculate execution time
     const end_time = std.time.milliTimestamp();
     const execution_time_ms = end_time - start_time;
-    
+
     // Show the generated password
-    try displayPassword(pwd, options.show_preview, execution_time_ms);
+    try displayPassword(pwd, options.show_preview, execution_time_ms, options.randomize);
 }
 
 // Function to process sprites and extract entropy
@@ -102,7 +103,7 @@ fn processSprites(options: CliOptions, allocator: std.mem.Allocator) ![]u8 {
         }
         sprites.deinit();
     }
-    
+
     // Process a single sprite or a directory of sprites
     if (options.sprite_path) |sprite_path| {
         try processSprite(sprite_path, &sprites, allocator);
@@ -111,7 +112,7 @@ fn processSprites(options: CliOptions, allocator: std.mem.Allocator) ![]u8 {
     } else {
         return error.NoSpriteSpecified;
     }
-    
+
     // Extract entropy from processed sprites
     return try entropy.extractEntropy(sprites.items, allocator);
 }
@@ -119,7 +120,7 @@ fn processSprites(options: CliOptions, allocator: std.mem.Allocator) ![]u8 {
 // Function to process an individual sprite
 fn processSprite(sprite_path: []const u8, sprites: *std.ArrayList([]u8), allocator: std.mem.Allocator) !void {
     const stdout = std.io.getStdOut().writer();
-    
+
     try stdout.print("\nProcessing sprite: {s}\n", .{sprite_path});
 
     // Load image with zigimg
@@ -129,47 +130,47 @@ fn processSprite(sprite_path: []const u8, sprites: *std.ArrayList([]u8), allocat
     try stdout.print(" Captured\n", .{});
 
     // Show original image dimensions
-    try stdout.print("Original dimensions: {d}x{d} pixels\n", .{image.width, image.height});
+    try stdout.print("Original dimensions: {d}x{d} pixels\n", .{ image.width, image.height });
 
     // Convert image to normalized 64x64 binary matrix
     try stdout.print("Normalizing to 64x64 and binarizing...\n", .{});
     const binary_matrix = try imageToBinaryMatrix(&image, allocator);
-    
+
     try sprites.append(binary_matrix);
-    
+
     try stdout.print("Calculating SHA-256 hash...", .{});
-    
+
     // Simulate processing with progress dots
     for (0..5) |_| {
         try stdout.print(".", .{});
         std.time.sleep(100 * std.time.ns_per_ms); // Sleep 100ms
     }
-    
+
     try stdout.print(" Completed\n", .{});
 }
 
 // Function to process a directory of sprites
 fn processDirectory(dir_path: []const u8, sprites: *std.ArrayList([]u8), allocator: std.mem.Allocator) !void {
     const stdout = std.io.getStdOut().writer();
-    
+
     var dir = try std.fs.cwd().openDir(dir_path, .{ .iterate = true });
     defer dir.close();
-    
+
     var iter = dir.iterate();
     var found_sprites = false;
-    
+
     try stdout.print("\nScanning directory: {s}\n", .{dir_path});
-    
+
     while (try iter.next()) |entry| {
         if (entry.kind == .file and isSupportedImage(entry.name)) {
             const full_path = try std.fs.path.join(allocator, &[_][]const u8{ dir_path, entry.name });
             defer allocator.free(full_path);
-            
+
             try processSprite(full_path, sprites, allocator);
             found_sprites = true;
         }
     }
-    
+
     if (!found_sprites) {
         try stdout.print("\nNo supported image files found in the directory.\n", .{});
         return error.NoSpritesFound;
@@ -179,7 +180,7 @@ fn processDirectory(dir_path: []const u8, sprites: *std.ArrayList([]u8), allocat
 // Function to check if a file is a supported image
 fn isSupportedImage(filename: []const u8) bool {
     const extensions = [_][]const u8{ ".png", ".jpg", ".jpeg", ".bmp", ".gif" };
-    
+
     for (extensions) |ext| {
         if (std.mem.endsWith(u8, filename, ext)) {
             return true;
@@ -191,72 +192,69 @@ fn isSupportedImage(filename: []const u8) bool {
 // Function to convert an image to a normalized 64x64 binary matrix
 fn imageToBinaryMatrix(img: *zigimg.Image, allocator: std.mem.Allocator) ![]u8 {
     const stdout = std.io.getStdOut().writer();
-    
+
     // Create a fixed size 64x64 matrix to ensure consistency
     var matrix = try allocator.alloc(u8, TARGET_WIDTH * TARGET_HEIGHT);
     errdefer allocator.free(matrix);
-    
+
     // Initialize with zeros
     @memset(matrix, 0);
-    
+
     // Get original image dimensions
     const src_width = img.width;
     const src_height = img.height;
-    
+
     // Calculate scaling factors for normalization
     const scale_x = @as(f32, @floatFromInt(src_width)) / @as(f32, @floatFromInt(TARGET_WIDTH));
     const scale_y = @as(f32, @floatFromInt(src_height)) / @as(f32, @floatFromInt(TARGET_HEIGHT));
-    
+
     // Threshold for binarization (average of the maximum values of the 3 RGB channels)
     const threshold: u32 = 3 * 128; // 3 channels * middle value (128)
-    
+
     try stdout.print("   Scaling image...", .{});
-    
+
     // Perform scaling and binarization
     for (0..TARGET_HEIGHT) |y| {
         // Show progress every 16 lines
         if (y % 16 == 0 and y > 0) {
             try stdout.print(" {d}%", .{(y * 100) / TARGET_HEIGHT});
         }
-        
+
         for (0..TARGET_WIDTH) |x| {
             // Calculate coordinates in the original image
             const src_x = @as(usize, @intFromFloat(@as(f32, @floatFromInt(x)) * scale_x));
             const src_y = @as(usize, @intFromFloat(@as(f32, @floatFromInt(y)) * scale_y));
-            
+
             // Get pixel and calculate brightness
             if (src_x < src_width and src_y < src_height) {
-                const pixel = img.pixels.asBytes()[(src_x + src_y * src_width) * 4..][0..4].*;
+                const pixel = img.pixels.asBytes()[(src_x + src_y * src_width) * 4 ..][0..4].*;
                 const brightness = @as(u32, pixel[0]) + @as(u32, pixel[1]) + @as(u32, pixel[2]);
-                
+
                 // Binarize: if brightness > threshold -> 1, otherwise -> 0
                 matrix[y * TARGET_WIDTH + x] = if (brightness > threshold) 1 else 0;
             }
         }
     }
-    
+
     try stdout.print(" Completed\n", .{});
-    
+
     // Print statistics about the matrix
     var ones: usize = 0;
     for (matrix) |bit| {
         if (bit == 1) ones += 1;
     }
-    
+
     const percentage_ones = @as(f32, @floatFromInt(ones)) / @as(f32, @floatFromInt(TARGET_WIDTH * TARGET_HEIGHT)) * 100.0;
-    
+
     // Show statistics
     try stdout.print("   Matrix statistics:\n", .{});
-    try stdout.print("      Dimensions: {d}x{d} ({d} pixels)\n", 
-        .{TARGET_WIDTH, TARGET_HEIGHT, TARGET_WIDTH * TARGET_HEIGHT});
-    try stdout.print("      Active bits: {d} ({d:.2}%)\n", 
-        .{ones, percentage_ones});
-    try stdout.print("      Inactive bits: {d} ({d:.2}%)\n", 
-        .{TARGET_WIDTH * TARGET_HEIGHT - ones, 100.0 - percentage_ones});
-    
+    try stdout.print("      Dimensions: {d}x{d} ({d} pixels)\n", .{ TARGET_WIDTH, TARGET_HEIGHT, TARGET_WIDTH * TARGET_HEIGHT });
+    try stdout.print("      Active bits: {d} ({d:.2}%)\n", .{ ones, percentage_ones });
+    try stdout.print("      Inactive bits: {d} ({d:.2}%)\n", .{ TARGET_WIDTH * TARGET_HEIGHT - ones, 100.0 - percentage_ones });
+
     // Show entropy evaluation
     try stdout.print("\n   Entropy evaluation: ", .{});
-    
+
     if (percentage_ones > 30.0 and percentage_ones < 70.0) {
         try stdout.print("Excellent\n", .{});
         try stdout.print("   \"This is a very balanced sprite with excellent bit distribution!\"\n", .{});
@@ -267,7 +265,7 @@ fn imageToBinaryMatrix(img: *zigimg.Image, allocator: std.mem.Allocator) ![]u8 {
         try stdout.print("Acceptable\n", .{});
         try stdout.print("   \"This sprite has many or very few active bits, but will still generate a secure password.\"\n", .{});
     }
-    
+
     return matrix;
 }
 
@@ -280,7 +278,7 @@ fn createPasswordPolicy(options: CliOptions) !password.PasswordPolicy {
         .numbers = false,
         .symbols = false,
     };
-    
+
     // Process predefined complexity parameter
     if (std.mem.eql(u8, options.complexity, "minimal")) {
         // Minimal: only lowercase letters
@@ -323,13 +321,14 @@ fn createPasswordPolicy(options: CliOptions) !password.PasswordPolicy {
             }
         }
     }
-    
+
     // Ensure at least one character set is selected
-    if (!char_sets.uppercase and !char_sets.lowercase and 
-        !char_sets.numbers and !char_sets.symbols) {
+    if (!char_sets.uppercase and !char_sets.lowercase and
+        !char_sets.numbers and !char_sets.symbols)
+    {
         return error.NoCharacterSetsSelected;
     }
-    
+
     // Verify that the length is within limits
     var length = options.password_length;
     if (length < options.min_length) {
@@ -337,7 +336,7 @@ fn createPasswordPolicy(options: CliOptions) !password.PasswordPolicy {
     } else if (length > options.max_length) {
         length = options.max_length;
     }
-    
+
     return password.PasswordPolicy{
         .min_length = length,
         .character_set = char_sets,
@@ -345,17 +344,24 @@ fn createPasswordPolicy(options: CliOptions) !password.PasswordPolicy {
 }
 
 // Function to display the generated password
-fn displayPassword(pwd: []const u8, preview: bool, execution_time_ms: i64) !void {
+fn displayPassword(pwd: []const u8, preview: bool, execution_time_ms: i64, randomize: bool) !void {
     const stdout = std.io.getStdOut().writer();
-    
+
     if (preview) {
         try stdout.print("\nYour Pokémon password is ready!\n\n", .{});
-        
+
         // Show password
         try stdout.print("Password: {s}\n", .{pwd});
         try stdout.print("Length: {d} characters\n", .{pwd.len});
-        try stdout.print("Generated in: {d} ms\n\n", .{execution_time_ms});
-        
+        try stdout.print("Generated in: {d} ms\n", .{execution_time_ms});
+
+        // Show if randomize mode was used
+        if (randomize) {
+            try stdout.print("Mode: Randomized (non-deterministic)\n", .{});
+        } else {
+            try stdout.print("Mode: Deterministic (same sprite = same password)\n", .{});
+        }
+
         // Random Pokémon tip
         const tips = [_][]const u8{
             "Your password is as strong as a Dragonite using Hyper Beam",
@@ -364,15 +370,18 @@ fn displayPassword(pwd: []const u8, preview: bool, execution_time_ms: i64) !void
             "Not even an Alakazam could guess this password",
             "This password has the defense of a Steelix and the speed of a Jolteon",
         };
-        
+
         // Use the first part of the password to select a "random" but deterministic tip
         const tip_idx = pwd[0] % tips.len;
-        try stdout.print("Professor Oak's Tip: {s}\n\n", .{tips[tip_idx]});
+        try stdout.print("\nProfessor Oak's Tip: {s}\n\n", .{tips[tip_idx]});
     } else {
         try stdout.print("\nPassword successfully generated!\n", .{});
         try stdout.print("(To view the password, use the --preview option)\n", .{});
         try stdout.print("\nThe password has {d} characters\n", .{pwd.len});
-        try stdout.print("Generated in: {d} ms\n\n", .{execution_time_ms});
+        try stdout.print("Generated in: {d} ms\n", .{execution_time_ms});
+        if (randomize) {
+            try stdout.print("Mode: Randomized (non-deterministic)\n", .{});
+        }
     }
 }
 
@@ -381,17 +390,19 @@ fn parseCliOptions(args: []const []const u8) !CliOptions {
     if (args.len < 2) {
         return CliOptions{};
     }
-    
+
     var options = CliOptions{};
     var i: usize = 1;
-    
+
     while (i < args.len) : (i += 1) {
         const arg = args[i];
-        
+
         if (std.mem.eql(u8, arg, "--help") or std.mem.eql(u8, arg, "-h")) {
             options.show_help = true;
         } else if (std.mem.eql(u8, arg, "--preview") or std.mem.eql(u8, arg, "-p")) {
             options.show_preview = true;
+        } else if (std.mem.eql(u8, arg, "--randomize") or std.mem.eql(u8, arg, "-r")) {
+            options.randomize = true;
         } else if (std.mem.eql(u8, arg, "--sprite") or std.mem.eql(u8, arg, "-s")) {
             i += 1;
             if (i >= args.len) return error.MissingValue;
@@ -422,7 +433,8 @@ fn parseCliOptions(args: []const []const u8) !CliOptions {
                 !std.mem.eql(u8, options.complexity, "medium") and
                 !std.mem.eql(u8, options.complexity, "high") and
                 !std.mem.eql(u8, options.complexity, "custom") and
-                !std.mem.eql(u8, options.complexity, "normal")) {
+                !std.mem.eql(u8, options.complexity, "normal"))
+            {
                 return error.InvalidComplexity;
             }
         } else if (std.mem.eql(u8, arg, "--chars") or std.mem.eql(u8, arg, "-c")) {
@@ -435,14 +447,14 @@ fn parseCliOptions(args: []const []const u8) !CliOptions {
             return error.InvalidArgument;
         }
     }
-    
+
     return options;
 }
 
 // Function to print the welcome banner
 fn printWelcomeBanner() !void {
     const stdout = std.io.getStdOut().writer();
-    
+
     try stdout.print("\nPokePasswords\n", .{});
     try stdout.print("Password generator based on Pokémon sprites\n", .{});
     try stdout.print("--------------------------------------------------\n\n", .{});
@@ -451,12 +463,12 @@ fn printWelcomeBanner() !void {
 // Function to print usage instructions
 fn printUsage() !void {
     const stdout = std.io.getStdOut().writer();
-    
+
     try stdout.print("\nPOKEPASSWORDS - TRAINER'S GUIDE\n\n", .{});
-    
+
     // Basic usage
     try stdout.print("Usage: pokepasswords [options]\n\n", .{});
-    
+
     // Options
     try stdout.print("Options:\n", .{});
     try stdout.print("  --sprite <file>        Select a sprite\n", .{});
@@ -468,8 +480,9 @@ fn printUsage() !void {
     try stdout.print("                         [minimal, basic, medium, high, normal, custom]\n", .{});
     try stdout.print("  --chars <categories>   Custom character types (u=upper, l=lower, n=numbers, s=symbols)\n", .{});
     try stdout.print("  --preview              Show the password\n", .{});
+    try stdout.print("  --randomize, -r        Break deterministic generation using random seed\n", .{});
     try stdout.print("  --help                 Show this message\n\n", .{});
-    
+
     // Complexity levels explanation
     try stdout.print("Complexity Levels:\n", .{});
     try stdout.print("  minimal    Lowercase letters only\n", .{});
@@ -478,11 +491,11 @@ fn printUsage() !void {
     try stdout.print("  high       All character sets (lowercase, uppercase, numbers, symbols)\n", .{});
     try stdout.print("  normal     Default behavior (all character sets)\n", .{});
     try stdout.print("  custom     Use character sets specified with --chars\n\n", .{});
-    
+
     // Examples
     try stdout.print("Examples:\n", .{});
     try stdout.print("  pokepasswords --sprite pikachu.png --length 16\n", .{});
     try stdout.print("  pokepasswords --dir sprites/ --preview\n", .{});
     try stdout.print("  pokepasswords --sprite pikachu.png --complexity medium\n", .{});
     try stdout.print("  pokepasswords --sprite pikachu.png --chars ln --length 12\n\n", .{});
-} 
+}

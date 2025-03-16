@@ -22,7 +22,7 @@ Pokepasswords generates secure passwords by:
 3. Applying cryptographic functions to generate random but reproducible passwords
 4. Ensuring passwords meet security requirements (length, character types)
 
-Each sprite always produces the same password, making this a deterministic generator.
+Each sprite always produces the same password, making this a deterministic generator. However, you can use the `--randomize` option to break this deterministic behavior when you need a different password from the same sprite.
 
 ## Quick Start
 
@@ -64,6 +64,7 @@ Options:
                          [minimal, basic, medium, high, normal, custom]
   --chars <categories>   Character types (u=upper, l=lower, n=numbers, s=symbols)
   --preview              Show preview of the generated password
+  --randomize, -r        Break deterministic generation using random seed
   --help                 Show this help message
 ```
 
@@ -89,6 +90,9 @@ zig build run -- --sprite sprites/pokemon/pikachu.png --chars ln
 
 # Set custom length range and complexity
 zig build run -- --sprite sprites/pokemon/pikachu.png --min-length 12 --max-length 16 --complexity high
+
+# Generate a unique non-deterministic password
+zig build run -- --sprite sprites/pokemon/pikachu.png --randomize --preview
 ```
 
 ### For Local Use
