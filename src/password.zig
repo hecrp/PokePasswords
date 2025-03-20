@@ -19,7 +19,7 @@ pub const CharacterSet = struct {
     const SYMBOLS = "!@#$%^&*()_+-=[]{}|;:,.<>?";
 
     // Function to get all valid characters according to the configuration
-    pub fn getValidChars(self: CharacterSet, allocator: std.mem.Allocator) ![]u8 {
+    pub fn get_valid_chars(self: CharacterSet, allocator: std.mem.Allocator) ![]u8 {
         // Calculate the total length needed
         var total_length: usize = 0;
         if (self.uppercase) total_length += UPPERCASE.len;
@@ -67,7 +67,7 @@ pub const PasswordPolicy = struct {
     character_set: CharacterSet = CharacterSet{},
 
     // Function to validate if a password meets the policy
-    pub fn validatePassword(self: PasswordPolicy, password: []const u8) bool {
+    pub fn validate_password(self: PasswordPolicy, password: []const u8) bool {
         // Check minimum length
         if (password.len < self.min_length) {
             return false;
@@ -114,16 +114,16 @@ pub const PasswordPolicy = struct {
 // Function to generate a password using the Xoshiro256++ algorithm
 // Input: seed derived from sprites and password policy
 // Output: generated password
-pub fn generatePassword(seed: []const u8, policy: PasswordPolicy, allocator: std.mem.Allocator, randomize: bool) ![]u8 {
+pub fn generate_password(seed: []const u8, policy: PasswordPolicy, allocator: std.mem.Allocator, randomize: bool) ![]u8 {
     // Get valid characters according to the policy
-    const valid_chars = try policy.character_set.getValidChars(allocator);
+    const valid_chars = try policy.character_set.get_valid_chars(allocator);
     defer allocator.free(valid_chars);
 
     // Create buffer for the password with the minimum length
     var password = try allocator.alloc(u8, policy.min_length);
 
     // Initialize the random generator with the seed or with a random seed if randomize is true
-    var prng = if (randomize) initPrngWithRandomSeed() else initPrngFromSeed(seed);
+    var prng = if (randomize) init_prng_with_random_seed() else init_prng_from_seed(seed);
     var random = prng.random();
 
     // Generate a random password
@@ -138,7 +138,7 @@ pub fn generatePassword(seed: []const u8, policy: PasswordPolicy, allocator: std
     var attempts: usize = 0;
     const max_attempts = 100;
 
-    while (!policy.validatePassword(password)) {
+    while (!policy.validate_password(password)) {
         // Generate a new password
         for (0..policy.min_length) |i| {
             const index = random.intRangeLessThan(usize, 0, valid_chars.len);
@@ -160,7 +160,7 @@ pub fn generatePassword(seed: []const u8, policy: PasswordPolicy, allocator: std
 // Useful when the user wants several password options
 // Input: seed, policy, and number of passwords
 // Output: list of generated passwords
-pub fn generateMultiplePasswords(seed: []const u8, policy: PasswordPolicy, count: usize, allocator: std.mem.Allocator, randomize: bool) ![][]u8 {
+pub fn generate_multiple_passwords(seed: []const u8, policy: PasswordPolicy, count: usize, allocator: std.mem.Allocator, randomize: bool) ![][]u8 {
     // Create array to store passwords
     var passwords = try allocator.alloc([]u8, count);
 
@@ -184,7 +184,7 @@ pub fn generateMultiplePasswords(seed: []const u8, policy: PasswordPolicy, count
         std.mem.writeIntLittle(u64, modified_seed[seed.len..][0..8], i);
 
         // Generate the password with the modified seed
-        passwords[i] = try generatePassword(modified_seed, policy, allocator, randomize);
+        passwords[i] = try generate_password(modified_seed, policy, allocator, randomize);
         success_count += 1;
     }
 
@@ -192,40 +192,20 @@ pub fn generateMultiplePasswords(seed: []const u8, policy: PasswordPolicy, count
 }
 
 // Helper function to initialize a PRNG from a seed
-fn initPrngFromSeed(seed: []const u8) std.Random.DefaultPrng {
-    // We use Xoshiro256 as a pseudorandom generator
-    var seed_int: u64 = 0;
-
-    // Convert the hash to an integer for the seed
-    // If the hash is shorter than 8 bytes, we pad with zeros
-    // If it's longer, we take only the first 8 bytes
-    if (seed.len >= 8) {
-        seed_int = @as(u64, seed[0]) |
-            (@as(u64, seed[1]) << 8) |
-            (@as(u64, seed[2]) << 16) |
-            (@as(u64, seed[3]) << 24) |
-            (@as(u64, seed[4]) << 32) |
-            (@as(u64, seed[5]) << 40) |
-            (@as(u64, seed[6]) << 48) |
-            (@as(u64, seed[7]) << 56);
-    } else {
-        var temp_buffer: [8]u8 = [_]u8{0} ** 8;
-        @memcpy(temp_buffer[0..seed.len], seed);
-        seed_int = @as(u64, temp_buffer[0]) |
-            (@as(u64, temp_buffer[1]) << 8) |
-            (@as(u64, temp_buffer[2]) << 16) |
-            (@as(u64, temp_buffer[3]) << 24) |
-            (@as(u64, temp_buffer[4]) << 32) |
-            (@as(u64, temp_buffer[5]) << 40) |
-            (@as(u64, temp_buffer[6]) << 48) |
-            (@as(u64, temp_buffer[7]) << 56);
-    }
-
+fn init_prng_from_seed(seed: []const u8) std.Random.DefaultPrng {
+    // Initialize an 8-byte buffer with zeros
+    var buffer: [8]u8 = [_]u8{0} ** 8;
+    // Copy up to 8 bytes from the seed
+    const len = @min(seed.len, 8);
+    std.mem.copy(u8, buffer[0..len], seed[0..len]);
+    // Convert the buffer to a u64 in little-endian order
+    const seed_int = std.mem.readInt(u64, &buffer, .Little);
+    // Initialize and return the PRNG
     return std.Random.DefaultPrng.init(seed_int);
 }
 
 // Helper function to initialize a PRNG with a true random seed
-fn initPrngWithRandomSeed() std.Random.DefaultPrng {
+fn init_prng_with_random_seed() std.Random.DefaultPrng {
     // Get a secure random seed from the system
     var seed_int: u64 = undefined;
     std.crypto.random.bytes(std.mem.asBytes(&seed_int));

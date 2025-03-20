@@ -58,9 +58,9 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     // Parse CLI options
-    const options = parseCliOptions(args) catch |err| {
+    const options = parse_cli_options(args) catch |err| {
         if (err == error.InvalidArgument or err == error.MissingValue) {
-            try printUsage();
+            try print_usage();
             return;
         }
         return err;
@@ -68,22 +68,22 @@ pub fn main() !void {
 
     // Show help if requested
     if (options.show_help) {
-        try printUsage();
+        try print_usage();
         return;
     }
 
     // Show welcome banner
-    try printWelcomeBanner();
+    try print_welcome_banner();
 
     // Process sprites and generate password
-    const entropy_data = try processSprites(options, allocator);
+    const entropy_data = try process_sprites(options, allocator);
     defer allocator.free(entropy_data);
 
     // Create password policy based on options
-    const policy = try createPasswordPolicy(options);
+    const policy = try create_password_policy(options);
 
     // Generate password
-    const pwd = try password.generatePassword(entropy_data, policy, allocator, options.randomize);
+    const pwd = try password.generate_password(entropy_data, policy, allocator, options.randomize);
     defer allocator.free(pwd);
 
     // Calculate execution time
@@ -91,11 +91,11 @@ pub fn main() !void {
     const execution_time_ms = end_time - start_time;
 
     // Show the generated password
-    try displayPassword(pwd, options.show_preview, execution_time_ms, options.randomize);
+    try display_password(pwd, options.show_preview, execution_time_ms, options.randomize);
 }
 
 // Function to process sprites and extract entropy
-fn processSprites(options: CliOptions, allocator: std.mem.Allocator) ![]u8 {
+fn process_sprites(options: CliOptions, allocator: std.mem.Allocator) ![]u8 {
     var sprites = std.ArrayList([]u8).init(allocator);
     defer {
         for (sprites.items) |sprite| {
@@ -106,19 +106,19 @@ fn processSprites(options: CliOptions, allocator: std.mem.Allocator) ![]u8 {
 
     // Process a single sprite or a directory of sprites
     if (options.sprite_path) |sprite_path| {
-        try processSprite(sprite_path, &sprites, allocator);
+        try process_sprite(sprite_path, &sprites, allocator);
     } else if (options.dir_path) |dir_path| {
-        try processDirectory(dir_path, &sprites, allocator);
+        try process_directory(dir_path, &sprites, allocator);
     } else {
         return error.NoSpriteSpecified;
     }
 
     // Extract entropy from processed sprites
-    return try entropy.extractEntropy(sprites.items, allocator);
+    return try entropy.extract_entropy(sprites.items, allocator);
 }
 
 // Function to process an individual sprite
-fn processSprite(sprite_path: []const u8, sprites: *std.ArrayList([]u8), allocator: std.mem.Allocator) !void {
+fn process_sprite(sprite_path: []const u8, sprites: *std.ArrayList([]u8), allocator: std.mem.Allocator) !void {
     const stdout = std.io.getStdOut().writer();
 
     try stdout.print("\nProcessing sprite: {s}\n", .{sprite_path});
@@ -134,7 +134,7 @@ fn processSprite(sprite_path: []const u8, sprites: *std.ArrayList([]u8), allocat
 
     // Convert image to normalized 64x64 binary matrix
     try stdout.print("Normalizing to 64x64 and binarizing...\n", .{});
-    const binary_matrix = try imageToBinaryMatrix(&image, allocator);
+    const binary_matrix = try image_to_binary_matrix(&image, allocator);
 
     try sprites.append(binary_matrix);
 
@@ -150,7 +150,7 @@ fn processSprite(sprite_path: []const u8, sprites: *std.ArrayList([]u8), allocat
 }
 
 // Function to process a directory of sprites
-fn processDirectory(dir_path: []const u8, sprites: *std.ArrayList([]u8), allocator: std.mem.Allocator) !void {
+fn process_directory(dir_path: []const u8, sprites: *std.ArrayList([]u8), allocator: std.mem.Allocator) !void {
     const stdout = std.io.getStdOut().writer();
 
     var dir = try std.fs.cwd().openDir(dir_path, .{ .iterate = true });
@@ -162,11 +162,11 @@ fn processDirectory(dir_path: []const u8, sprites: *std.ArrayList([]u8), allocat
     try stdout.print("\nScanning directory: {s}\n", .{dir_path});
 
     while (try iter.next()) |entry| {
-        if (entry.kind == .file and isSupportedImage(entry.name)) {
+        if (entry.kind == .file and is_supported_image(entry.name)) {
             const full_path = try std.fs.path.join(allocator, &[_][]const u8{ dir_path, entry.name });
             defer allocator.free(full_path);
 
-            try processSprite(full_path, sprites, allocator);
+            try process_sprite(full_path, sprites, allocator);
             found_sprites = true;
         }
     }
@@ -178,7 +178,7 @@ fn processDirectory(dir_path: []const u8, sprites: *std.ArrayList([]u8), allocat
 }
 
 // Function to check if a file is a supported image
-fn isSupportedImage(filename: []const u8) bool {
+fn is_supported_image(filename: []const u8) bool {
     const extensions = [_][]const u8{ ".png", ".jpg", ".jpeg", ".bmp", ".gif" };
 
     for (extensions) |ext| {
@@ -190,7 +190,7 @@ fn isSupportedImage(filename: []const u8) bool {
 }
 
 // Function to convert an image to a normalized 64x64 binary matrix
-fn imageToBinaryMatrix(img: *zigimg.Image, allocator: std.mem.Allocator) ![]u8 {
+fn image_to_binary_matrix(img: *zigimg.Image, allocator: std.mem.Allocator) ![]u8 {
     const stdout = std.io.getStdOut().writer();
 
     // Create a fixed size 64x64 matrix to ensure consistency
@@ -270,7 +270,7 @@ fn imageToBinaryMatrix(img: *zigimg.Image, allocator: std.mem.Allocator) ![]u8 {
 }
 
 // Function to create a password policy based on CLI options
-fn createPasswordPolicy(options: CliOptions) !password.PasswordPolicy {
+fn create_password_policy(options: CliOptions) !password.PasswordPolicy {
     // Initialize all sets explicitly as false
     var char_sets = password.CharacterSet{
         .uppercase = false,
@@ -344,7 +344,7 @@ fn createPasswordPolicy(options: CliOptions) !password.PasswordPolicy {
 }
 
 // Function to display the generated password
-fn displayPassword(pwd: []const u8, preview: bool, execution_time_ms: i64, randomize: bool) !void {
+fn display_password(pwd: []const u8, preview: bool, execution_time_ms: i64, randomize: bool) !void {
     const stdout = std.io.getStdOut().writer();
 
     if (preview) {
@@ -386,7 +386,7 @@ fn displayPassword(pwd: []const u8, preview: bool, execution_time_ms: i64, rando
 }
 
 // Function to parse command line options
-fn parseCliOptions(args: []const []const u8) !CliOptions {
+fn parse_cli_options(args: []const []const u8) !CliOptions {
     if (args.len < 2) {
         return CliOptions{};
     }
@@ -452,7 +452,7 @@ fn parseCliOptions(args: []const []const u8) !CliOptions {
 }
 
 // Function to print the welcome banner
-fn printWelcomeBanner() !void {
+fn print_welcome_banner() !void {
     const stdout = std.io.getStdOut().writer();
 
     try stdout.print("\nPokePasswords\n", .{});
@@ -461,7 +461,7 @@ fn printWelcomeBanner() !void {
 }
 
 // Function to print usage instructions
-fn printUsage() !void {
+fn print_usage() !void {
     const stdout = std.io.getStdOut().writer();
 
     try stdout.print("\nPOKEPASSWORDS - TRAINER'S GUIDE\n\n", .{});
