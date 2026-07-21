@@ -64,6 +64,10 @@ Options:
                          [minimal, basic, medium, high, normal, custom]
   --chars <categories>   Character types (u=upper, l=lower, n=numbers, s=symbols)
   --preview              Show preview of the generated password
+  --count, -n <n>        Generate N password options (default: 1, max: 20)
+  --secret <phrase>      Private secret mixed via HMAC-SHA256
+  --render               Show sprite preview in terminal (built-in, no chafa/viu)
+  --render-width <n>     Terminal preview width (default: 48)
   --randomize, -r        Break deterministic generation using random seed
   --help                 Show this help message
 ```
@@ -93,6 +97,9 @@ zig build run -- --sprite sprites/pokemon/pikachu.png --min-length 12 --max-leng
 
 # Generate a unique non-deterministic password
 zig build run -- --sprite sprites/pokemon/pikachu.png --randomize --preview
+
+# Generate 5 password options with sprite preview and a private secret
+zig build run -- --sprite sprites/pokemon/pikachu.png --count 5 --secret "my phrase" --render --preview
 ```
 
 ### For Local Use

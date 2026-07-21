@@ -376,3 +376,52 @@ test "multiple password generation" {
         }
     }
 }
+
+// HMAC secret: same inputs must be reproducible, different secrets must differ
+test "secret protection via HMAC" {
+    const allocator = testing.allocator;
+
+    var sprite = [_]u8{0} ** 64;
+    sprite[10] = 1;
+
+    const hash = try entropy.sprite_to_hash(&sprite, allocator);
+    defer allocator.free(hash);
+
+    const protected_a1 = try entropy.apply_secret(hash, "my secret phrase", allocator);
+    defer allocator.free(protected_a1);
+
+    const protected_a2 = try entropy.apply_secret(hash, "my secret phrase", allocator);
+    defer allocator.free(protected_a2);
+
+    const protected_b = try entropy.apply_secret(hash, "different secret", allocator);
+    defer allocator.free(protected_b);
+
+    try testing.expectEqualStrings(protected_a1, protected_a2);
+    try testing.expect(!std.mem.eql(u8, protected_a1, protected_b));
+    try testing.expect(!std.mem.eql(u8, hash, protected_a1));
+
+    const policy = password.PasswordPolicy{ .min_length = 16, .character_set = .{} };
+
+    const pwd_no_secret = try password.generate_password(hash, policy, allocator, false, std.testing.io);
+    defer allocator.free(pwd_no_secret);
+
+    const pwd_with_secret = try password.generate_password(protected_a1, policy, allocator, false, std.testing.io);
+    defer allocator.free(pwd_with_secret);
+
+    try testing.expect(!std.mem.eql(u8, pwd_no_secret, pwd_with_secret));
+}
+
+test "derive_seed with and without secret" {
+    const allocator = testing.allocator;
+
+    const hash_bytes = [_]u8{0xAB} ** 32;
+    const hash: []const u8 = &hash_bytes;
+
+    const plain = try entropy.derive_seed(hash, null, allocator);
+    defer allocator.free(plain);
+    try testing.expectEqualStrings(hash, plain);
+
+    const derived = try entropy.derive_seed(hash, "secret", allocator);
+    defer allocator.free(derived);
+    try testing.expect(!std.mem.eql(u8, hash, derived));
+}
