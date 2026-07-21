@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+
+      - name: Fetch dependencies
+        run: zig build --fetch
+
+      - name: Build
+        run: zig build -Doptimize=ReleaseSafe
+
+      - name: Test
+        run: zig build test -Doptimize=ReleaseSafe
+
+      - name: Smoke test password generation
+        run: |
+          mkdir -p sprites/pokemon
+          curl -fsSL https://raw.githubusercontent.com/msikma/pokesprite/master/pokemon-gen8/regular/pikachu.png \
+            -o sprites/pokemon/pikachu.png
+          zig build run -Doptimize=ReleaseSafe -- \
+            --sprite sprites/pokemon/pikachu.png --length 16 --preview

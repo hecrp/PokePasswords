@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "=== Building optimized Docker image with Zig 0.14.0 ==="
+echo "=== Building optimized Docker image with Zig 0.16.0 ==="
 docker build -t pokepasswords-zig:slim .
 
 if [ $? -eq 0 ]; then

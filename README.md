@@ -12,7 +12,7 @@ Inspired by this technical achievement, Pokepasswords uses Pokémon sprites as s
 
 ### Development Note
 
-This is a project under development that I'm using while learning the Zig programming language. I'm currently facing some issues with dependencies that have added complexity to the project. For this reason, I've included several auxiliary scripts, and the repository isn't as organized as I would like. I appreciate your understanding as I continue to improve both my ideas and Zig skills.
+This project targets **Zig 0.16.0**. Dependencies are managed with the Zig package manager (`zig fetch` / `zig build --fetch`); no manual patches are required.
 
 ## How It Works
 
@@ -99,6 +99,7 @@ zig build run -- --sprite sprites/pokemon/pikachu.png --randomize --preview
 
 1. **Setup (first time only)**:
    ```bash
+   # Requires Zig 0.16.0+ (https://ziglang.org/download/)
    chmod +x setup.sh
    ./setup.sh
    ```
@@ -110,7 +111,7 @@ zig build run -- --sprite sprites/pokemon/pikachu.png --randomize --preview
 
 3. **Generate password**:
    ```bash
-   zig build run -- --sprite sprites/pokemon/pikachu.png
+   zig build run -- --sprite sprites/pokemon/pikachu.png --preview
    ```
 
 4. **With sprite visualization**:

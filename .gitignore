@@ -1,7 +1,8 @@
 # Zig specific
-zig-cache/
 .zig-cache/
+zig-cache/
 zig-out/
+zig-pkg/
 
 # Binaries/Executables
 bin/
@@ -11,31 +12,28 @@ bin/
 *.so
 *.dylib
 *.dll
+pokepasswords
+pokepasswords-test
 
 # Build artifacts
 temp_pkg/
 .zigimg_patch/
 
-# Dependencies that should be downloaded by the package manager
-# We exclude zigimg from the repo to save space - it will be downloaded automatically
+# Legacy local dependency checkout (prefer zig fetch / zig-pkg)
 deps/
-!/deps/.gitkeep
 
-# Specifically exclude any downloaded zigimg tar/zip files
-zigimg-master.tar.gz
+# Downloaded archive noise
 zigimg-*.tar.gz
 zigimg-*.zip
 *.tar.gz
 *.zip
 
 # Sprites (might be large binary files)
-# By default, we exclude sprite files since they can be downloaded
 sprites/**/*.png
 sprites/**/*.jpg
 sprites/**/*.jpeg
 sprites/**/*.gif
 sprites/**/*.bmp
-# Keep the directory structure
 !sprites/**/.gitkeep
 
 # System files
@@ -49,7 +47,6 @@ desktop.ini
 .vscode/
 .idea/
 *.sublime-*
-.editorconfig
 
 # Temporary/backup files
 *.bak
@@ -59,20 +56,14 @@ desktop.ini
 *.pyc
 *.out
 
-# Notes and local documentation
+# Local notes
 NOTES.md
 EXCLUDED_FILES.md
-docs/
 
 # Deployment specific files
 .env
 .env.*
 config.local.json
-
-# Test files and scripts that are not part of the core project
-test_script.sh
-test/*
-!test/.gitkeep
 
 # Cache directories
 .cache/
@@ -81,10 +72,3 @@ node_modules/
 
 # Generated files during execution
 *.generated.*
-
-# Downloaded files
-zigimg-master.tar.gz
-zigimg-*.tar.gz
-zigimg-*.zip
-# Make sure these additional files are ignorados
-test_script.sh
