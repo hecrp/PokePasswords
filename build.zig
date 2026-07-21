@@ -21,6 +21,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const render_mod = b.addModule("render", .{
+        .root_source_file = b.path("src/render.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const exe_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
@@ -29,6 +35,7 @@ pub fn build(b: *std.Build) void {
     exe_mod.addImport("zigimg", zigimg_dep.module("zigimg"));
     exe_mod.addImport("entropy", entropy_mod);
     exe_mod.addImport("password", password_mod);
+    exe_mod.addImport("render", render_mod);
 
     const exe = b.addExecutable(.{
         .name = "pokepasswords",

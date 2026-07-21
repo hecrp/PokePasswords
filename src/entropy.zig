@@ -117,3 +117,25 @@ pub fn extract_entropy(sprites: []const []const u8, allocator: std.mem.Allocator
     // Finalize with a second layer of hashing
     return finalize_hash(combined, allocator);
 }
+
+/// Mix sprite-derived entropy with a user secret via HMAC-SHA256.
+/// Without a secret, anyone who knows the sprite can reproduce the password.
+/// The secret acts as a private salt that only the user knows.
+pub fn apply_secret(entropy_hash: []const u8, secret: []const u8, allocator: std.mem.Allocator) ![]u8 {
+    if (secret.len == 0) return error.EmptySecret;
+
+    var mac: [std.crypto.auth.hmac.sha2.HmacSha256.mac_length]u8 = undefined;
+    std.crypto.auth.hmac.sha2.HmacSha256.create(&mac, entropy_hash, secret);
+
+    const result = try allocator.alloc(u8, mac.len);
+    @memcpy(result, &mac);
+    return result;
+}
+
+/// Derive the final PRNG seed, optionally protected by a user secret.
+pub fn derive_seed(entropy_hash: []const u8, secret: ?[]const u8, allocator: std.mem.Allocator) ![]u8 {
+    if (secret) |s| {
+        return apply_secret(entropy_hash, s, allocator);
+    }
+    return allocator.dupe(u8, entropy_hash);
+}

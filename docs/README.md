@@ -26,6 +26,8 @@ The process of generating passwords based on Pokemon sprites follows these steps
 
 6. **Password Generation**: The final hash is used as a seed for the Xoshiro256++ pseudorandom generator, which generates random characters according to the specified policy.
 
+Optionally, a user-provided secret (`--secret`) is mixed via HMAC-SHA256 so that knowing the public sprite alone is not enough to reproduce the password.
+
 ### Process Diagram
 
 ```
@@ -76,4 +78,20 @@ This command will generate a 16-character password using the Pikachu sprite as a
 pokepasswords --dir sprites/pokemon/ --length 20 --chars uln --preview
 ```
 
-This command will generate a 20-character password using all available sprites in the directory, including only uppercase letters, lowercase letters, and numbers (without symbols). The `--chars` flag accepts a compact set of category letters: `u` (uppercase), `l` (lowercase), `n` (numbers), `s` (symbols). 
+This command will generate a 20-character password using all available sprites in the directory, including only uppercase letters, lowercase letters, and numbers (without symbols). The `--chars` flag accepts a compact set of category letters: `u` (uppercase), `l` (lowercase), `n` (numbers), `s` (symbols).
+
+### Example 3: Secret-protected generation
+
+```bash
+pokepasswords --sprite sprites/pokemon/pikachu.png --secret "my private phrase" --preview
+```
+
+The sprite provides visual entropy; the secret ensures only you can reproduce the password.
+
+### Example 4: Multiple password options
+
+```bash
+pokepasswords --sprite sprites/pokemon/pikachu.png --count 5 --render --preview
+```
+
+Generates five distinct password candidates from the same inputs, with an inline terminal sprite preview. 
