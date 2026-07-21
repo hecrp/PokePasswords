@@ -1,5 +1,15 @@
 # Pokepasswords
 
+[![CI](https://github.com/hecrp/PokePasswords/actions/workflows/ci.yml/badge.svg)](https://github.com/hecrp/PokePasswords/actions/workflows/ci.yml)
+[![Docker](https://github.com/hecrp/PokePasswords/actions/workflows/docker.yml/badge.svg)](https://github.com/hecrp/PokePasswords/actions/workflows/docker.yml)
+[![Docker Hub Version](https://img.shields.io/docker/v/hecrp/pokepasswords?label=Docker%20Hub&logo=docker)](https://hub.docker.com/r/hecrp/pokepasswords)
+[![Docker Hub Pulls](https://img.shields.io/docker/pulls/hecrp/pokepasswords?logo=docker)](https://hub.docker.com/r/hecrp/pokepasswords)
+[![GHCR](https://img.shields.io/badge/GHCR-ghcr.io%2Fhecrp%2Fpokepasswords-2496ED?logo=github)](https://github.com/hecrp/PokePasswords/pkgs/container/pokepasswords)
+[![Zig](https://img.shields.io/badge/Zig-0.16.0-F7A41D?logo=zig&logoColor=white)](https://ziglang.org/download/)
+[![License: MIT](https://img.shields.io/github/license/hecrp/PokePasswords)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/hecrp/PokePasswords?style=social)](https://github.com/hecrp/PokePasswords/stargazers)
+[![Last commit](https://img.shields.io/github/last-commit/hecrp/PokePasswords)](https://github.com/hecrp/PokePasswords/commits/main)
+
 ![Pokepasswords](https://archives.bulbagarden.net/media/upload/thumb/6/61/Red_on_computer.png/441px-Red_on_computer.png?20160406004422)
 
 ## Introduction
@@ -133,7 +143,20 @@ zig build run -- --sprite sprites/pokemon/pikachu.png --count 5 --secret "my phr
 
 ### For Docker Use
 
-1. **Build Docker image (first time only)**:
+Images are published automatically on every push to `main`:
+
+- **Docker Hub:** `hecrp/pokepasswords:slim`
+- **GitHub Container Registry:** `ghcr.io/hecrp/pokepasswords:slim`
+
+```bash
+# Pull from Docker Hub
+docker pull hecrp/pokepasswords:slim
+
+# Or from GHCR
+docker pull ghcr.io/hecrp/pokepasswords:slim
+```
+
+1. **Build Docker image locally (optional)**:
    ```bash
    ./docker-build.sh
    ```
