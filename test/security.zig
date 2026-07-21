@@ -1,20 +1,18 @@
 // security.zig
 //
-// Tests para validar la seguridad y funcionalidad del generador de contraseñas.
+// Tests to validate security and functionality of the password generator.
 
 const std = @import("std");
 const testing = std.testing;
-const entropy = @import("../src/entropy.zig");
-const password = @import("../src/password.zig");
+const entropy = @import("entropy");
+const password = @import("password");
 
-// Test de reproducibilidad: verificar que la misma semilla genera la misma contraseña
-test "reproducibilidad de contraseña" {
-    var allocator = testing.allocator;
-    
-    // 1. Crear una semilla fija para pruebas
+// Reproducibility: the same seed must produce the same password
+test "password reproducibility" {
+    const allocator = testing.allocator;
+
     const test_seed = "esto_es_una_semilla_para_pruebas";
-    
-    // 2. Definir una política de contraseña
+
     const policy = password.PasswordPolicy{
         .min_length = 16,
         .character_set = password.CharacterSet{
@@ -24,81 +22,68 @@ test "reproducibilidad de contraseña" {
             .symbols = true,
         },
     };
-    
-    // 3. Generar una primera contraseña con la semilla
-    var pwd1 = try password.generatePassword(test_seed, policy, allocator);
+
+    const pwd1 = try password.generate_password(test_seed, policy, allocator, false, std.testing.io);
     defer allocator.free(pwd1);
-    
-    // 4. Generar una segunda contraseña con la misma semilla
-    var pwd2 = try password.generatePassword(test_seed, policy, allocator);
+
+    const pwd2 = try password.generate_password(test_seed, policy, allocator, false, std.testing.io);
     defer allocator.free(pwd2);
-    
-    // 5. Verificar que ambas contraseñas son idénticas
+
     try testing.expectEqualStrings(pwd1, pwd2);
-    
-    std.debug.print("Test de reproducibilidad: contraseña 1: {s}, contraseña 2: {s}\n", .{ pwd1, pwd2 });
-    
-    // 6. Prueba adicional: generar múltiples veces y verificar reproducibilidad
+
     for (0..5) |_| {
-        var pwd_extra = try password.generatePassword(test_seed, policy, allocator);
+        const pwd_extra = try password.generate_password(test_seed, policy, allocator, false, std.testing.io);
         defer allocator.free(pwd_extra);
         try testing.expectEqualStrings(pwd1, pwd_extra);
     }
 }
 
-// Test de políticas: verificar que las contraseñas generadas cumplen con las políticas definidas
-test "cumplimiento de políticas" {
-    var allocator = testing.allocator;
-    
-    // 1. Crear una semilla para pruebas
+// Policy compliance: generated passwords must satisfy the configured policy
+test "policy compliance" {
+    const allocator = testing.allocator;
+
     const test_seed = "semilla_para_verificar_politicas";
-    
-    // 2. Definir varias políticas con diferentes requisitos
-    const politicas = [_]password.PasswordPolicy{
-        // Sólo mayúsculas, longitud 12
+
+    const policies = [_]password.PasswordPolicy{
         .{
             .min_length = 12,
-            .character_set = .{ 
+            .character_set = .{
                 .uppercase = true,
                 .lowercase = false,
                 .numbers = false,
                 .symbols = false,
             },
         },
-        // Mayúsculas y números, longitud 16
         .{
             .min_length = 16,
-            .character_set = .{ 
+            .character_set = .{
                 .uppercase = true,
                 .lowercase = false,
                 .numbers = true,
                 .symbols = false,
             },
         },
-        // Todo excepto símbolos, longitud 20
         .{
             .min_length = 20,
-            .character_set = .{ 
+            .character_set = .{
                 .uppercase = true,
                 .lowercase = true,
                 .numbers = true,
                 .symbols = false,
             },
         },
-        // Todos los caracteres, longitud 24
         .{
             .min_length = 24,
-            .character_set = .{ 
+            .character_set = .{
                 .uppercase = true,
                 .lowercase = true,
                 .numbers = true,
                 .symbols = true,
             },
         },
-        // Solo símbolos y números, longitud corta (8)
         .{
             .min_length = 8,
-            .character_set = .{ 
+            .character_set = .{
                 .uppercase = false,
                 .lowercase = false,
                 .numbers = true,
@@ -106,67 +91,57 @@ test "cumplimiento de políticas" {
             },
         },
     };
-    
-    // 3. Probar cada política
-    for (politicas) |policy| {
-        // Generar una contraseña con la política actual
-        var pwd = try password.generatePassword(test_seed, policy, allocator);
+
+    for (policies) |policy| {
+        const pwd = try password.generate_password(test_seed, policy, allocator, false, std.testing.io);
         defer allocator.free(pwd);
-        
-        // Verificar que la contraseña cumple con la política
-        try testing.expect(policy.validatePassword(pwd));
-        
-        // Verificar la longitud mínima
+
+        try testing.expect(policy.validate_password(pwd));
         try testing.expect(pwd.len >= policy.min_length);
-        
-        // Verificar conjuntos de caracteres
-        var tiene_mayusculas = false;
-        var tiene_minusculas = false;
-        var tiene_numeros = false;
-        var tiene_simbolos = false;
-        
+
+        var has_uppercase = false;
+        var has_lowercase = false;
+        var has_numbers = false;
+        var has_symbols = false;
+
         for (pwd) |char| {
-            if (char >= 'A' and char <= 'Z') tiene_mayusculas = true;
-            if (char >= 'a' and char <= 'z') tiene_minusculas = true;
-            if (char >= '0' and char <= '9') tiene_numeros = true;
-            if (std.mem.indexOfScalar(u8, password.CharacterSet.SYMBOLS, char) != null) tiene_simbolos = true;
+            if (char >= 'A' and char <= 'Z') has_uppercase = true;
+            if (char >= 'a' and char <= 'z') has_lowercase = true;
+            if (char >= '0' and char <= '9') has_numbers = true;
+            if (std.mem.indexOfScalar(u8, password.CharacterSet.SYMBOLS, char) != null) has_symbols = true;
         }
-        
-        // Verificar que solo están presentes los conjuntos solicitados
+
         if (policy.character_set.uppercase) {
-            try testing.expect(tiene_mayusculas);
+            try testing.expect(has_uppercase);
         } else {
-            try testing.expect(!tiene_mayusculas);
+            try testing.expect(!has_uppercase);
         }
-        
+
         if (policy.character_set.lowercase) {
-            try testing.expect(tiene_minusculas);
+            try testing.expect(has_lowercase);
         } else {
-            try testing.expect(!tiene_minusculas);
+            try testing.expect(!has_lowercase);
         }
-        
+
         if (policy.character_set.numbers) {
-            try testing.expect(tiene_numeros);
+            try testing.expect(has_numbers);
         } else {
-            try testing.expect(!tiene_numeros);
+            try testing.expect(!has_numbers);
         }
-        
+
         if (policy.character_set.symbols) {
-            try testing.expect(tiene_simbolos);
+            try testing.expect(has_symbols);
         } else {
-            try testing.expect(!tiene_simbolos);
+            try testing.expect(!has_symbols);
         }
-        
-        std.debug.print("Test de política (longitud: {d}): {s}\n", .{ policy.min_length, pwd });
     }
 }
 
-// Test de seguridad: verificar que las contraseñas generadas no son predecibles
-test "aleatoriedad de contraseña" {
-    var allocator = testing.allocator;
-    
-    // 1. Generar varias contraseñas con diferentes semillas
-    var semillas = [_][]const u8{
+// Randomness: different seeds must produce different passwords
+test "password randomness" {
+    const allocator = testing.allocator;
+
+    const seeds = [_][]const u8{
         "semilla_uno",
         "semilla_dos",
         "semilla_tres",
@@ -178,122 +153,97 @@ test "aleatoriedad de contraseña" {
         "semilla_nueve",
         "semilla_diez",
     };
-    
+
     const policy = password.PasswordPolicy{
         .min_length = 16,
         .character_set = .{},
     };
-    
-    var contraseñas = try allocator.alloc([]u8, semillas.len);
+
+    var passwords = try allocator.alloc([]u8, seeds.len);
     defer {
-        for (contraseñas) |pwd| {
+        for (passwords) |pwd| {
             allocator.free(pwd);
         }
-        allocator.free(contraseñas);
+        allocator.free(passwords);
     }
-    
-    // Generar contraseñas con diferentes semillas
-    for (semillas, 0..) |seed, i| {
-        contraseñas[i] = try password.generatePassword(seed, policy, allocator);
+
+    for (seeds, 0..) |seed, i| {
+        passwords[i] = try password.generate_password(seed, policy, allocator, false, std.testing.io);
     }
-    
-    // 2. Verificar que todas las contraseñas son diferentes entre sí
-    for (0..contraseñas.len) |i| {
-        for (i+1..contraseñas.len) |j| {
-            try testing.expect(!std.mem.eql(u8, contraseñas[i], contraseñas[j]));
+
+    for (0..passwords.len) |i| {
+        for (i + 1..passwords.len) |j| {
+            try testing.expect(!std.mem.eql(u8, passwords[i], passwords[j]));
         }
     }
-    
-    // 3. Calcular distancia Hamming entre contraseñas
-    var distancias: f32 = 0;
-    var pares: usize = 0;
-    
-    for (0..contraseñas.len) |i| {
-        for (i+1..contraseñas.len) |j| {
-            var diferencias: usize = 0;
-            const lon_min = @min(contraseñas[i].len, contraseñas[j].len);
-            
-            for (0..lon_min) |k| {
-                if (contraseñas[i][k] != contraseñas[j][k]) {
-                    diferencias += 1;
+
+    var distances: f32 = 0;
+    var pairs: usize = 0;
+
+    for (0..passwords.len) |i| {
+        for (i + 1..passwords.len) |j| {
+            var differences: usize = 0;
+            const min_len = @min(passwords[i].len, passwords[j].len);
+
+            for (0..min_len) |k| {
+                if (passwords[i][k] != passwords[j][k]) {
+                    differences += 1;
                 }
             }
-            
-            const distancia = @as(f32, @floatFromInt(diferencias)) / @as(f32, @floatFromInt(lon_min));
-            distancias += distancia;
-            pares += 1;
-            
-            std.debug.print("Distancia entre contraseñas {d} y {d}: {d:.2}%\n", 
-                           .{ i + 1, j + 1, distancia * 100 });
+
+            const distance = @as(f32, @floatFromInt(differences)) / @as(f32, @floatFromInt(min_len));
+            distances += distance;
+            pairs += 1;
         }
     }
-    
-    // Calcular distancia promedio
-    const distancia_promedio = distancias / @as(f32, @floatFromInt(pares));
-    std.debug.print("Distancia promedio entre contraseñas: {d:.2}%\n", .{distancia_promedio * 100});
-    
-    // Esperamos que la distancia promedio sea relativamente alta (> 50%)
-    try testing.expect(distancia_promedio > 0.5);
-    
-    // Imprimir las contraseñas generadas
-    std.debug.print("Test de aleatoriedad: contraseñas con diferentes semillas:\n", .{});
-    for (contraseñas, 0..) |pwd, i| {
-        std.debug.print("  Semilla {d}: {s}\n", .{ i + 1, pwd });
-    }
+
+    const average_distance = distances / @as(f32, @floatFromInt(pairs));
+    try testing.expect(average_distance > 0.5);
 }
 
-// Test de entropía: verificar que la entropía extraída de sprites es suficiente
-test "entropía de sprites" {
-    var allocator = testing.allocator;
-    
-    // 1. Simular matrices binarias de sprites
+// Entropy: hashes extracted from sprites must be well distributed
+test "sprite entropy" {
+    const allocator = testing.allocator;
+
     var sprite1 = [_]u8{0} ** 64;
     var sprite2 = [_]u8{1} ** 64;
-    var sprite3 = [_]u8{0, 1, 0, 1, 0, 1} ** 10 ++ [_]u8{0} ** 4;
-    
-    // Crear sprites más complejos
+    var sprite3 = [_]u8{ 0, 1, 0, 1, 0, 1 } ** 10 ++ [_]u8{0} ** 4;
+
     var sprite4 = [_]u8{0} ** 64;
     var sprite5 = [_]u8{0} ** 64;
-    
-    // Crear patrones más complejos
+
     for (0..64) |i| {
-        // Patrón de tablero de ajedrez
         if ((i / 8 + i % 8) % 2 == 0) {
             sprite4[i] = 1;
         }
-        
-        // Patrón diagonal
         if (i % 9 == 0 or i % 7 == 0) {
             sprite5[i] = 1;
         }
     }
-    
-    // Modificar algunos bits para simular sprites
+
     sprite1[10] = 1;
     sprite1[20] = 1;
     sprite1[30] = 1;
-    
+
     sprite2[15] = 0;
     sprite2[25] = 0;
     sprite2[35] = 0;
-    
-    // 2. Extraer entropía de cada sprite
-    var hash1 = try entropy.spriteToHash(&sprite1, allocator);
+
+    const hash1 = try entropy.sprite_to_hash(&sprite1, allocator);
     defer allocator.free(hash1);
-    
-    var hash2 = try entropy.spriteToHash(&sprite2, allocator);
+
+    const hash2 = try entropy.sprite_to_hash(&sprite2, allocator);
     defer allocator.free(hash2);
-    
-    var hash3 = try entropy.spriteToHash(&sprite3, allocator);
+
+    const hash3 = try entropy.sprite_to_hash(&sprite3, allocator);
     defer allocator.free(hash3);
-    
-    var hash4 = try entropy.spriteToHash(&sprite4, allocator);
+
+    const hash4 = try entropy.sprite_to_hash(&sprite4, allocator);
     defer allocator.free(hash4);
-    
-    var hash5 = try entropy.spriteToHash(&sprite5, allocator);
+
+    const hash5 = try entropy.sprite_to_hash(&sprite5, allocator);
     defer allocator.free(hash5);
-    
-    // 3. Verificar que los hashes son diferentes
+
     try testing.expect(!std.mem.eql(u8, hash1, hash2));
     try testing.expect(!std.mem.eql(u8, hash1, hash3));
     try testing.expect(!std.mem.eql(u8, hash1, hash4));
@@ -304,192 +254,125 @@ test "entropía de sprites" {
     try testing.expect(!std.mem.eql(u8, hash3, hash4));
     try testing.expect(!std.mem.eql(u8, hash3, hash5));
     try testing.expect(!std.mem.eql(u8, hash4, hash5));
-    
-    // 4. Verificar tamaño del hash (SHA-256 = 32 bytes)
-    try testing.expectEqual(hash1.len, 32);
-    try testing.expectEqual(hash2.len, 32);
-    try testing.expectEqual(hash3.len, 32);
-    try testing.expectEqual(hash4.len, 32);
-    try testing.expectEqual(hash5.len, 32);
-    
-    // 5. Comprobar distribución de bits en los hashes
+
+    try testing.expectEqual(@as(usize, 32), hash1.len);
+    try testing.expectEqual(@as(usize, 32), hash2.len);
+    try testing.expectEqual(@as(usize, 32), hash3.len);
+    try testing.expectEqual(@as(usize, 32), hash4.len);
+    try testing.expectEqual(@as(usize, 32), hash5.len);
+
     var bit_counts = [_]usize{0} ** 5;
-    
+
     for (hash1) |byte| {
-        bit_counts[0] += @popCount(u8, byte);
+        bit_counts[0] += @popCount(byte);
     }
-    
     for (hash2) |byte| {
-        bit_counts[1] += @popCount(u8, byte);
+        bit_counts[1] += @popCount(byte);
     }
-    
     for (hash3) |byte| {
-        bit_counts[2] += @popCount(u8, byte);
+        bit_counts[2] += @popCount(byte);
     }
-    
     for (hash4) |byte| {
-        bit_counts[3] += @popCount(u8, byte);
+        bit_counts[3] += @popCount(byte);
     }
-    
     for (hash5) |byte| {
-        bit_counts[4] += @popCount(u8, byte);
+        bit_counts[4] += @popCount(byte);
     }
-    
-    // Cada hash debe tener aproximadamente el 50% de bits activos
-    // (permitiendo un margen de error del 20%)
+
     const total_bits = hash1.len * 8;
     const lower_bound = @as(usize, @intFromFloat(@as(f32, @floatFromInt(total_bits)) * 0.4));
     const upper_bound = @as(usize, @intFromFloat(@as(f32, @floatFromInt(total_bits)) * 0.6));
-    
-    for (bit_counts, 0..) |count, i| {
-        std.debug.print("Sprite {d} - Bits activos en hash: {d}/{d} ({d:.2}%)\n", 
-                       .{ i + 1, count, total_bits, @as(f32, @floatFromInt(count)) / @as(f32, @floatFromInt(total_bits)) * 100 });
-                       
+
+    for (bit_counts) |count| {
         try testing.expect(count >= lower_bound and count <= upper_bound);
     }
-    
-    std.debug.print("Test de entropía: hashes de los sprites simulados:\n", .{});
-    imprimirHash("Sprite 1", hash1);
-    imprimirHash("Sprite 2", hash2);
-    imprimirHash("Sprite 3", hash3);
-    imprimirHash("Sprite 4", hash4);
-    imprimirHash("Sprite 5", hash5);
-    
-    // 6. Probar extracción de entropía con múltiples sprites
-    var sprites = [_][]const u8{&sprite1, &sprite2, &sprite3, &sprite4, &sprite5};
-    var hash_final = try entropy.extractEntropy(&sprites, allocator);
-    defer allocator.free(hash_final);
-    
-    // Verificar tamaño del hash final
-    try testing.expectEqual(hash_final.len, 32);
-    
-    imprimirHash("Hash final combinado", hash_final);
+
+    const sprites = [_][]const u8{ &sprite1, &sprite2, &sprite3, &sprite4, &sprite5 };
+    const final_hash = try entropy.extract_entropy(&sprites, allocator);
+    defer allocator.free(final_hash);
+
+    try testing.expectEqual(@as(usize, 32), final_hash.len);
 }
 
-// Test de resistencia: verificar que el sistema es resistente a ataques conocidos
-test "resistencia a ataques" {
-    var allocator = testing.allocator;
-    
-    // 1. Simular un escenario donde un atacante conoce parte del sprite
-    // Creamos dos sprites casi idénticos con una pequeña diferencia
-    var sprite_base = [_]u8{0} ** 64;
-    sprite_base[32] = 1;
-    
-    var sprite_variante = [_]u8{0} ** 64;
-    sprite_variante[32] = 1;
-    sprite_variante[33] = 1;  // Un solo bit diferente
-    
-    // 2. Extraer entropía de ambos sprites
-    var hash_base = try entropy.spriteToHash(&sprite_base, allocator);
-    defer allocator.free(hash_base);
-    
-    var hash_variante = try entropy.spriteToHash(&sprite_variante, allocator);
-    defer allocator.free(hash_variante);
-    
-    // 3. Verificar que los hashes son completamente diferentes a pesar de la pequeña diferencia
-    // en los sprites originales (propiedad de avalancha de SHA-256)
-    var diferencias: usize = 0;
-    for (0..hash_base.len) |i| {
-        const bits_diferentes = @popCount(u8, hash_base[i] ^ hash_variante[i]);
-        diferencias += bits_diferentes;
+// Avalanche resistance: tiny input changes must produce very different outputs
+test "attack resistance" {
+    const allocator = testing.allocator;
+
+    var base_sprite = [_]u8{0} ** 64;
+    base_sprite[32] = 1;
+
+    var variant_sprite = [_]u8{0} ** 64;
+    variant_sprite[32] = 1;
+    variant_sprite[33] = 1;
+
+    const base_hash = try entropy.sprite_to_hash(&base_sprite, allocator);
+    defer allocator.free(base_hash);
+
+    const variant_hash = try entropy.sprite_to_hash(&variant_sprite, allocator);
+    defer allocator.free(variant_hash);
+
+    var differences: usize = 0;
+    for (0..base_hash.len) |i| {
+        differences += @popCount(base_hash[i] ^ variant_hash[i]);
     }
-    
-    // Con SHA-256, esperamos aproximadamente 128 bits diferentes (50% de 256 bits)
-    // debido a la propiedad de avalancha
-    const bits_totales = hash_base.len * 8;
-    const porcentaje_diferencia = @as(f32, @floatFromInt(diferencias)) / @as(f32, @floatFromInt(bits_totales));
-    
-    std.debug.print("Test de resistencia: bits diferentes: {d}/{d} ({d:.2}%)\n", 
-                   .{ diferencias, bits_totales, porcentaje_diferencia * 100 });
-    
-    // Verificar que el porcentaje de diferencia es cercano al 50%
-    // (permitimos un rango entre 30% y 70% para evitar falsos positivos)
-    try testing.expect(porcentaje_diferencia >= 0.3 and porcentaje_diferencia <= 0.7);
-    
-    imprimirHash("Hash sprite base", hash_base);
-    imprimirHash("Hash sprite variante", hash_variante);
-    
-    // 4. Verificar que pequeños cambios en la semilla producen contraseñas muy diferentes
-    var seed1 = "semilla_de_prueba";
-    var seed2 = "semilla_de_pruebA"; // Cambio de una letra
-    
+
+    const total_bits = base_hash.len * 8;
+    const difference_ratio = @as(f32, @floatFromInt(differences)) / @as(f32, @floatFromInt(total_bits));
+    try testing.expect(difference_ratio >= 0.3 and difference_ratio <= 0.7);
+
+    const seed1 = "semilla_de_prueba";
+    const seed2 = "semilla_de_pruebA";
+
     const policy = password.PasswordPolicy{
         .min_length = 20,
         .character_set = .{},
     };
-    
-    var pwd1 = try password.generatePassword(seed1, policy, allocator);
+
+    const pwd1 = try password.generate_password(seed1, policy, allocator, false, std.testing.io);
     defer allocator.free(pwd1);
-    
-    var pwd2 = try password.generatePassword(seed2, policy, allocator);
+
+    const pwd2 = try password.generate_password(seed2, policy, allocator, false, std.testing.io);
     defer allocator.free(pwd2);
-    
-    // Contar caracteres diferentes
-    var chars_diferentes: usize = 0;
+
+    var different_chars: usize = 0;
     for (0..@min(pwd1.len, pwd2.len)) |i| {
         if (pwd1[i] != pwd2[i]) {
-            chars_diferentes += 1;
+            different_chars += 1;
         }
     }
-    
-    const porcentaje_chars_diferentes = @as(f32, @floatFromInt(chars_diferentes)) / @as(f32, @floatFromInt(pwd1.len));
-    std.debug.print("Caracteres diferentes en contraseñas: {d}/{d} ({d:.2}%)\n", 
-                   .{ chars_diferentes, pwd1.len, porcentaje_chars_diferentes * 100 });
-    
-    // Esperamos que la mayoría de los caracteres sean diferentes
-    try testing.expect(porcentaje_chars_diferentes > 0.7);
-    
-    std.debug.print("Contraseña 1: {s}\n", .{pwd1});
-    std.debug.print("Contraseña 2: {s}\n", .{pwd2});
+
+    const char_difference_ratio = @as(f32, @floatFromInt(different_chars)) / @as(f32, @floatFromInt(pwd1.len));
+    try testing.expect(char_difference_ratio > 0.7);
 }
 
-// Test para verificar la generación de múltiples contraseñas
-test "generación de múltiples contraseñas" {
-    var allocator = testing.allocator;
-    
-    // 1. Definir semilla y política
+// Multiple password generation must produce distinct valid passwords
+test "multiple password generation" {
+    const allocator = testing.allocator;
+
     const test_seed = "semilla_para_multiples_contraseñas";
     const policy = password.PasswordPolicy{
         .min_length = 12,
         .character_set = .{},
     };
-    
-    // 2. Generar múltiples contraseñas
-    const numero_contraseñas: usize = 5;
-    var contraseñas = try password.generateMultiplePasswords(test_seed, policy, numero_contraseñas, allocator);
+
+    const password_count: usize = 5;
+    const passwords = try password.generate_multiple_passwords(test_seed, policy, password_count, allocator, false, std.testing.io);
     defer {
-        for (contraseñas) |pwd| {
+        for (passwords) |pwd| {
             allocator.free(pwd);
         }
-        allocator.free(contraseñas);
+        allocator.free(passwords);
     }
-    
-    // 3. Verificar que se generaron el número correcto de contraseñas
-    try testing.expectEqual(contraseñas.len, numero_contraseñas);
-    
-    // 4. Verificar que todas cumplen con la política
-    for (contraseñas) |pwd| {
-        try testing.expect(policy.validatePassword(pwd));
+
+    try testing.expectEqual(password_count, passwords.len);
+
+    for (passwords) |pwd| {
+        try testing.expect(policy.validate_password(pwd));
     }
-    
-    // 5. Verificar que todas son diferentes entre sí
-    for (0..contraseñas.len) |i| {
-        for (i+1..contraseñas.len) |j| {
-            try testing.expect(!std.mem.eql(u8, contraseñas[i], contraseñas[j]));
+
+    for (0..passwords.len) |i| {
+        for (i + 1..passwords.len) |j| {
+            try testing.expect(!std.mem.eql(u8, passwords[i], passwords[j]));
         }
     }
-    
-    std.debug.print("Múltiples contraseñas generadas con la misma semilla:\n", .{});
-    for (contraseñas, 0..) |pwd, i| {
-        std.debug.print("  Contraseña {d}: {s}\n", .{ i + 1, pwd });
-    }
 }
-
-// Función auxiliar para imprimir un hash en formato hexadecimal
-fn imprimirHash(etiqueta: []const u8, hash: []const u8) void {
-    std.debug.print("  {s}: ", .{etiqueta});
-    for (hash) |byte| {
-        std.debug.print("{x:0>2}", .{byte});
-    }
-    std.debug.print("\n", .{});
-} 

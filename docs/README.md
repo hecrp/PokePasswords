@@ -73,7 +73,7 @@ This command will generate a 16-character password using the Pikachu sprite as a
 ### Example 2: Generation with Multiple Sprites
 
 ```bash
-pokepasswords --dir sprites/pokemon/ --length 20 --chars upper,lower,numbers --preview
+pokepasswords --dir sprites/pokemon/ --length 20 --chars uln --preview
 ```
 
-This command will generate a 20-character password using all available sprites in the directory, including only uppercase letters, lowercase letters, and numbers (without symbols). 
+This command will generate a 20-character password using all available sprites in the directory, including only uppercase letters, lowercase letters, and numbers (without symbols). The `--chars` flag accepts a compact set of category letters: `u` (uppercase), `l` (lowercase), `n` (numbers), `s` (symbols). 
