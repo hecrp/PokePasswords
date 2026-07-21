@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/pokepasswords
 
 jobs:
   build-and-push:
@@ -35,7 +35,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=slim,enable={{is_default_branch}}
             type=raw,value=latest,enable={{is_default_branch}}
@@ -55,4 +55,5 @@ jobs:
 
       - name: Smoke test container
         run: |
-          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:slim --help
+          docker pull ${{ env.IMAGE_NAME }}:slim
+          docker run --rm ${{ env.IMAGE_NAME }}:slim --help
